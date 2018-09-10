@@ -19,7 +19,7 @@ public class PluginImpl implements Plugin<Project> {
             local.dependencies.each { dependency ->
                 local.resolvedConfiguration.resolvedArtifacts.each { artifact ->
                     if ("${dependency.group}:${dependency.name}:${dependency.version}" == artifact.moduleVersion.toString()) {
-                        def libPath = "${artifact.file.parentFile.path}\\libs"
+                        def libPath = "${artifact.file.parentFile.path}${File.separator}libs"
                         println("localrepo, add depencies:$libPath")
                         project.getRepositories().flatDir {
                             dirs(libPath)
