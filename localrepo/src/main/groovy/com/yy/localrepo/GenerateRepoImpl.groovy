@@ -38,24 +38,17 @@ public class GenerateRepoImpl implements Plugin<Project> {
         project.uploadArchives {
             repositories {
                 mavenDeployer {
-                    println("wang mavenDeployer")
                     //设置插件的GAV参数
                     pom.groupId = groupId
-                    println("wang mavenDeployer wrong1")
                     pom.artifactId = artifactId
-                    println("wang mavenDeployer wrong2")
                     pom.version = sdkVersion
                     //文件发布到下面目录
-                    println("wang mavenDeployer wrong3")
                     repository(url: repoUri)
-                    println("wang mavenDeployer wrong4")
                     pom.withXml {
-                        println("wang withXml ${asNode()}")
                         getAllLocalDependency(project)
 
 
                         Node dependenciesNode = asNode().getAt("dependencies")[0]
-                        println("wang withXml dependenciesNode ${dependenciesNode}")
                         if (dependenciesNode != null) {
                             dependenciesNode.replaceNode {}
                         } else {
@@ -74,13 +67,9 @@ public class GenerateRepoImpl implements Plugin<Project> {
                             def allDependencies = project.configurations[configurationName].allDependencies
                             allDependencies.each {
 
-                                println("wang ${it.group}   ${it.name}")
-
                                 def islocal = false
                                 localArtifacts.each { local ->
-                                    println("islocal? ${it.group}:${it.name}:${it.version}  ${local.moduleVersion}")
                                     if ("${it.group}:${it.name}:${it.version}" == local.moduleVersion.toString()) {
-                                        println("islocal? true")
                                         islocal = true
                                     }
                                 }
@@ -106,7 +95,6 @@ public class GenerateRepoImpl implements Plugin<Project> {
                             }
                         }
 
-                        println("wang withXml dependenciesNode 123  ${dependenciesNode}")
                         repoArtifacts.each { repoArtifact ->
                             boolean isAdded = false
                             pomDependency.each {
@@ -115,7 +103,6 @@ public class GenerateRepoImpl implements Plugin<Project> {
                                 }
                             }
                             if (!isAdded) {
-                                println("wang  add ${repoArtifact.moduleVersion} ")
                                 def dependencyNode = dependenciesNode.appendNode('dependency')
                                 dependencyNode.appendNode('groupId', repoArtifact.moduleVersion.id.group)
                                 dependencyNode.appendNode('artifactId', repoArtifact.moduleVersion.id.name)
@@ -124,20 +111,11 @@ public class GenerateRepoImpl implements Plugin<Project> {
 
                         }
                         asNode().appendNode(dependenciesNode)
-                        println("wang withXml dependenciesNode 123456  ${dependenciesNode}")
-                        println("wang pom finish ${asNode()}")
                     }
                 }
             }
             project.uploadArchives.doLast {
                 copyDependencyFile(project)
-            }
-
-
-            Upload uploadArchives = (Upload) project.getTasks().withType(Upload.class).findByName("uploadArchives")
-
-            if (uploadArchives != null) {
-                println("wang get uploadArchives suc")
             }
         }
     }
@@ -148,7 +126,6 @@ public class GenerateRepoImpl implements Plugin<Project> {
         if (allDependencies != null && !allDependencies.isEmpty()) {
             allDependencies.reverseEach {
                 artifact ->
-                    println("getAllDependency, artifact:$artifact   ${artifact.name}")
                     if (isLocal(artifact) && !localArtifacts.contains(artifact)) {
                         localArtifacts.add(artifact)
                     }
@@ -160,13 +137,11 @@ public class GenerateRepoImpl implements Plugin<Project> {
     }
 
     private void copyDependencyFile(Project project) {
-        println("wang copyDependencyFile,${localArtifacts}")
         def libsPath = "$repo/${groupId.replace(".", "/")}/${artifactId}/${sdkVersion}/libs"
 
 //        delete "${libsPath}"
         localArtifacts.forEach {
             artifact ->
-                println("localArtifacts $artifact ${artifact.file}")
                 def artifactPath = artifact.file
                 if (artifact.type == 'aar') {
                     project.copy {
@@ -204,9 +179,6 @@ public class GenerateRepoImpl implements Plugin<Project> {
             compile project.configurations.embedded
         }
         repoUri = project.uri(repo)
-
-
-
 
         initUpload(project)
     }

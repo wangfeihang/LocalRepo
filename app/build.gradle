@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin:'maven'
+apply plugin: 'local_repo'
 
 
 repositories {
@@ -27,6 +28,8 @@ android {
 }
 
 dependencies {
+//    implementation  'com.github.wangfeihang:LocalRepo:1.0.0'
+
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation 'com.android.support.constraint:constraint-layout:1.1.3'
