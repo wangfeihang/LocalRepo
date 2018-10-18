@@ -2,6 +2,7 @@ package com.yy.localrepo
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.ResolutionStrategy
 
 public class PluginImpl implements Plugin<Project> {
     void apply(Project project) {
@@ -10,6 +11,14 @@ public class PluginImpl implements Plugin<Project> {
         }
         project.dependencies {
             api project.configurations.localapi
+        }
+        project.buildscript {
+            project.configurations.all {
+                println("强制更新版本")
+                it.resolutionStrategy{
+                    force 'net.sf.proguard:proguard-gradle:6.0.3'
+                }
+            }
         }
         project.afterEvaluate {
 
