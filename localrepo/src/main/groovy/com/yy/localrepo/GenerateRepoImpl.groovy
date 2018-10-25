@@ -3,15 +3,11 @@ package com.yy.localrepo
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Dependency
-import org.gradle.api.artifacts.ResolvedArtifact
-import org.gradle.api.internal.project.ProjectInternal
+import org.gradle.api.artifacts.*
 import org.gradle.util.GradleVersion
 
 public class GenerateRepoImpl implements Plugin<Project> {
 
-    def localArtifacts = new ArrayList<ResolvedArtifact>()
-    def repoArtifacts = new ArrayList()
 
     def gradleVersionStr = GradleVersion.current().getVersion()
     def gradleApiVersion = gradleVersionStr.substring(0, gradleVersionStr.lastIndexOf(".")).toFloat()
@@ -21,167 +17,151 @@ public class GenerateRepoImpl implements Plugin<Project> {
     String sdkVersion
     String repo
     Closure isLocal
+    Closure dontCopy
 
-
-    def pomDependency = new ArrayList()
     def repoUri
+    
+    def nodeAdder
+
+
+    def localDependency = new ArrayList()
+    def repoDependency = new ArrayList()
+    def dependedProjects = new ArrayList()
+    
+    def repoResolvedDependency=new ArrayList<ResolvedDependency>()
+    def localResolvedDependency=new ArrayList<ResolvedDependency>()
+
+    def innerRepoDependency = new ArrayList()
+
+    def project
+
+
 
     private initUpload(final Project project) {
+        analyzeAllDependencies(project)
         project.plugins.apply('maven')
         project.uploadArchives {
             repositories {
                 mavenDeployer {
                     //设置插件的GAV参数
                     pom.groupId = groupId
-                    pom.artifactId = artifactId
+                    pom.artifactId = project.name
                     pom.version = sdkVersion
                     //文件发布到下面目录
                     repository(url: repoUri)
                     pom.withXml {
                         //分解
-                        getAllLocalDependency(project)
-
+                        analyzeInnerDependencies(project)
                         Node dependenciesNode = asNode().getAt("dependencies")[0]
-                        if (dependenciesNode != null) {
-                            dependenciesNode.replaceNode {}
-                        } else {
-                            dependenciesNode = asNode().appendNode('dependencies')
+                        if(dependenciesNode!=null){
+                            asNode().remove(dependenciesNode)
+                        }
+                        dependenciesNode = asNode().appendNode('dependencies')
+
+                        innerRepoDependency.each {node->
+                            nodeAdder.addDependencyNode(node,dependenciesNode)
+
+                        }
+                        repoDependency.each { dependency ->
+//                            println("wang,repoDependency:${dependency}")
+                            nodeAdder.addDependencyNode(dependency, dependenciesNode)
+                        }
+                        dependedProjects.each { dependedProject ->
+//                            println("wang,dependedProjects:${dependedProject}")
+                            nodeAdder.addDependencyNode(dependedProject, dependenciesNode)
                         }
 
-                        def configurationNames = ['api', 'implementation']
-
-                        configurationNames.each { configurationName ->
-                            def allDependencies = project.configurations[configurationName].allDependencies
-                            allDependencies.each {
-                                hasAddedToLocal(it)
-                                if (it.group != null && it.name != null && !pomDependency.contains(it)) {
-                                    pomDependency.add(it)
-                                    addDependencyNode(it, dependenciesNode)
-                                }
-                            }
+                        repoResolvedDependency.each {dependency ->
+//                            println("wang,repoResolvedDependency:${dependency}")
+                            nodeAdder.addDependencyNode(dependency, dependenciesNode)
                         }
-
-                        repoArtifacts.each { repoArtifact ->
-                            boolean isAdded = false
-                            pomDependency.each {
-                                if ("${it.group}:${it.name}:${it.version}" == repoArtifact.moduleVersion.toString()) {
-                                    isAdded = true
-                                }
-                            }
-                            if (!isAdded) {
-                                addDependencyNode(repoArtifact, dependenciesNode)
-                            }
-                        }
-                        asNode().appendNode(dependenciesNode)
                     }
                 }
             }
             project.uploadArchives.doLast {
-                copyDependencyFile(project)
-            }
-        }
-    }
-
-
-    private static void addDependencyNode(ResolvedArtifact repoArtifact, Node dependenciesNode) {
-        def dependencyNode = dependenciesNode.appendNode('dependency')
-        dependencyNode.appendNode('groupId', repoArtifact.moduleVersion.id.group)
-        dependencyNode.appendNode('artifactId', repoArtifact.moduleVersion.id.name)
-        dependencyNode.appendNode('version', repoArtifact.moduleVersion.id.version)
-    }
-
-    private static void addDependencyNode(Dependency dependency, Node dependenciesNode) {
-        def dependencyNode = dependenciesNode.appendNode('dependency')
-        dependencyNode.appendNode('groupId', dependency.group)
-        dependencyNode.appendNode('artifactId', dependency.name)
-        dependencyNode.appendNode('version', dependency.version)
-        //If there are any exclusions in dependency
-        if (dependency.excludeRules.size() > 0) {
-            def exclusionsNode = dependencyNode.appendNode('exclusions')
-            dependency.excludeRules.each { rule ->
-                def exclusionNode = exclusionsNode.appendNode('exclusion')
-                exclusionNode.appendNode('groupId', rule.group)
-                exclusionNode.appendNode('artifactId', rule.module)
-            }
-        }
-    }
-
-    private boolean hasAddedToLocal(Dependency dependency) {
-        localArtifacts.each { local ->
-            if ("${dependency.group}:${dependency.name}:${dependency.version}" == local.moduleVersion.toString()) {
-                return true
-            }
-        }
-        return false
-    }
-
-
-    private void getAllLocalDependency(final ProjectInternal project) {
-        def allDependencies = new ArrayList(project.configurations.embedded.resolvedConfiguration.resolvedArtifacts)
-        if (allDependencies != null && !allDependencies.isEmpty()) {
-            allDependencies.reverseEach {
-                artifact ->
-                    if (isLocal.call(artifact) && !localArtifacts.contains(artifact)) {
-                        localArtifacts.add(artifact)
+                localDependency.each {
+//                    println("wang,localDependency:${it}")
+                    it.excludeRules.each{ rule->
+                        println("exclude group: '${rule.group}', module: '${rule.module}'")
                     }
-                    if (!isLocal.call(artifact) && !repoArtifacts.contains(artifact)) {
-                        repoArtifacts.add(artifact)
-                    }
-            }
-        }
-    }
-
-    private void copyDependencyFile(Project project) {
-        def libsPath = "$repo${File.separator}${groupId.replace(".", File.separator)}${File.separator}${artifactId}${File.separator}${sdkVersion}${File.separator}libs"
-        localArtifacts.forEach {
-            artifact ->
-                def artifactPath = artifact.file
-                if (artifact.type == 'aar') {
-                    project.copy {
-                        from artifactPath
-                        into project.file(libsPath)
-                    }
-                } else if (artifact.type == 'jar') {
-                    project.copy {
-                        from artifactPath
-                        into project.file(libsPath)
-                    }
-                } else if (artifact.type == 'so') {
-                    project.copy {
-                        from artifactPath
-                        into project.file("${libsPath}/armeabi-v7a")
-                        exclude("*x86.so")
-                        exclude("*armeabi.so")
-                    }
-                } else {
-                    throw new Exception("Unhandled Artifact of type ${artifact.type}")
+                    CopyDependency.copyDependencies(it, project, repo, dontCopy)
                 }
+                localResolvedDependency.each {
+//                    println("wang,localResolvedDependency:${it}")
+                    CopyDependency.copyDependencies(it,project,repo, dontCopy)
+                }
+            }
+        }
+        dependedProjects.each {
+            project.getTasks().findByName("uploadArchives").dependsOn("${it.getPath()}:uploadArchives")
+        }
+    }
+
+   
+
+
+    private void analyzeAllDependencies(Project project) {
+        project.configurations.each {
+            if(it.name.equals("api")){
+                analyzeSingleConfigurationsDependencies(project.configurations.api.getAllDependencies())
+            }else if(it.name.equals("compile")){
+                analyzeSingleConfigurationsDependencies(project.configurations.compile.getAllDependencies())
+            }else if(it.name.equals("implementation")){
+                analyzeSingleConfigurationsDependencies(project.configurations.implementation.getAllDependencies())
+            }
+        }
+
+    }
+
+    private void analyzeInnerDependencies(Project project){
+        project.configurations.each {
+            if(it.name.equals("api")){
+                project.configurations.api.getAllDependencies().each{ dependency->
+                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency,project,isLocal,repo,dontCopy))
+                }
+            } else if(it.name.equals("compile")){
+                project.configurations.compile.getAllDependencies().each{ dependency->
+                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency,project,isLocal,repo,dontCopy))
+                }
+            }else if(it.name.equals("implementation")){
+                project.configurations.implementation.getAllDependencies().each { dependency ->
+                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency, project, isLocal, repo,dontCopy))
+                }
+            }
+
+        }
+    }
+
+    private void analyzeSingleConfigurationsDependencies(DependencySet dependencies) {
+        if (dependencies != null) {
+            dependencies.each { dependency ->
+                if (dependency instanceof ProjectDependency) {
+                    dependedProjects.add(dependency.getDependencyProject())
+                } else if (dependency instanceof ExternalModuleDependency) {
+                    if (isLocal.call(dependency)) {
+                        localDependency.add(dependency)
+                    } else {
+                        repoDependency.add(dependency)
+                    }
+                }
+            }
         }
     }
 
     @Override
     void apply(Project project) {
-        project.configurations {
-            embedded
-        }
-        project.dependencies {
-            compile project.configurations.embedded
-        }
+        this.project=project
         project.extensions.create('uploadConfigLocal', UploadExtension, project)
         project.afterEvaluate {
-            def embeddedDependencies = project.configurations.embedded.dependencies
-            def hasEmbeddedDependencies = embeddedDependencies != null && !embeddedDependencies.isEmpty()
-            if (hasEmbeddedDependencies) {
-                initUploadExtensions(project)
-                initUpload(project)
-            }
+            initUploadExtensions(project)
+            initUpload(project)
         }
     }
 
     private void initUploadExtensions(Project project) {
         UploadExtension uploadExtensions = project.uploadConfigLocal
 
-        println("wang ${uploadExtensions}")
+        println("GenerateRepoImpl, ${uploadExtensions}")
 
 
         if (uploadExtensions == null) {
@@ -209,6 +189,17 @@ public class GenerateRepoImpl implements Plugin<Project> {
                     return true
             }
         }
+
+        dontCopy=uploadExtensions.dontCopy
+        if (dontCopy == null) {
+            dontCopy = {
+                artifact ->
+                    return false
+            }
+        }
+
         repoUri = project.uri(repo)
+        nodeAdder=new NodeAdder(groupId,sdkVersion)
+        
     }
 }

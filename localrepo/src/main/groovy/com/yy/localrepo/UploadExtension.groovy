@@ -11,6 +11,7 @@ class UploadExtension {
     String sdkVersion
     String repo
     Closure isLocal
+    Closure dontCopy
 
     UploadExtension(Project project) {
         this.project = project
@@ -64,6 +65,13 @@ class UploadExtension {
         return isLocal
     }
 
+    void setDontCopy(Closure dontCopy) {
+        this.dontCopy = dontCopy
+    }
+
+    Closure getDontCopy() {
+        return dontCopy
+    }
 
     @Override
     public String toString() {
@@ -73,7 +81,8 @@ class UploadExtension {
                 ", artifactId='" + artifactId + '\'' +
                 ", sdkVersion='" + sdkVersion + '\'' +
                 ", repo='" + repo + '\'' +
-                ", isLocal=" + isLocal +
+                ", isLocal=" + isLocal + '\'' +
+                ", dontCopy=" + dontCopy +
                 '}';
     }
 }

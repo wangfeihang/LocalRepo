@@ -28,7 +28,8 @@ public class PluginImpl implements Plugin<Project> {
             local.dependencies.each { dependency ->
                 local.resolvedConfiguration.resolvedArtifacts.each { artifact ->
                     if ("${dependency.group}:${dependency.name}:${dependency.version}" == artifact.moduleVersion.toString()) {
-                        def libPath = "${artifact.file.parentFile.path}${File.separator}libs"
+                        def removePath="${dependency.group.toString().replace(".",File.separator)}${File.separator}${dependency.name.toString()}${File.separator}${dependency.version.toString()}"
+                        def libPath = artifact.file.path.toString().substring(0,artifact.file.path.indexOf(removePath))
                         println("localrepo, add depencies:$libPath")
                         project.getRepositories().flatDir {
                             dirs(libPath)
