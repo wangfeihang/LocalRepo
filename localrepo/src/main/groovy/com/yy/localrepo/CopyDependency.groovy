@@ -12,9 +12,10 @@ import javax.print.DocFlavor.STRING
 public class CopyDependency {
 
     def static copyDependencies(Dependency dependency, Project project, String repo,Closure dontCopy) {
+        println("CopyDependency,need copy${dependency}")
         def dependencyPath = project.gradle.getGradleUserHomeDir().path + "/caches/modules-2/files-2.1/"
         dependencyPath += dependency.group + "/" + dependency.name + "/" + dependency.version + "/"
-
+        println("the dependency path is:${dependencyPath}")
         def libsPath = "$repo${File.separator}libs"
         project.fileTree(dependencyPath).getFiles().each { file ->
             copyFile(file, project, libsPath,dontCopy)
@@ -22,6 +23,7 @@ public class CopyDependency {
     }
 
     def static copyDependencies(ResolvedDependency dependency, Project project, String repo,Closure dontCopy) {
+        println("CopyDependency,need copy:${dependency}")
         def libsPath = "$repo${File.separator}libs"
         dependency.getModuleArtifacts().each { resolvedArtifact ->
             copyFile(resolvedArtifact.file, project, libsPath,dontCopy)
@@ -30,19 +32,23 @@ public class CopyDependency {
 
     private static void copyFile(File file, Project project, String libsPath,Closure dontCopy) {
         if (file.name.contains("sources")||dontCopy.call(file.name)) {
+            println("dontCopy worked")
             return
         }
         if (file.name.endsWith(".aar")) {
+            println("copying----${file.name} ")
             project.copy {
                 from file.path
                 into project.file(libsPath)
             }
         } else if (file.name.endsWith(".jar")) {
+            println("copying----${file.name} ")
             project.copy {
                 from file.path
                 into project.file(libsPath)
             }
         } else if (file.name.endsWith(".so")) {
+            println("copying----${file.name} ")
             project.copy {
                 from file.path
                 into project.file("${libsPath}/armeabi-v7a")
