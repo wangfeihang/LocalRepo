@@ -11,20 +11,18 @@ import javax.print.DocFlavor.STRING
  */
 public class CopyDependency {
 
-    def static copyDependencies(Dependency dependency, Project project, String repo,Closure dontCopy) {
+    def static copyDependencies(Dependency dependency, Project project, String libsPath,Closure dontCopy) {
         println("CopyDependency,need copy${dependency}")
         def dependencyPath = project.gradle.getGradleUserHomeDir().path + "/caches/modules-2/files-2.1/"
         dependencyPath += dependency.group + "/" + dependency.name + "/" + dependency.version + "/"
         println("the dependency path is:${dependencyPath}")
-        def libsPath = "$repo${File.separator}libs"
         project.fileTree(dependencyPath).getFiles().each { file ->
             copyFile(file, project, libsPath,dontCopy)
         }
     }
 
-    def static copyDependencies(ResolvedDependency dependency, Project project, String repo,Closure dontCopy) {
+    def static copyDependencies(ResolvedDependency dependency, Project project, String libsPath,Closure dontCopy) {
         println("CopyDependency,need copy:${dependency}")
-        def libsPath = "$repo${File.separator}libs"
         dependency.getModuleArtifacts().each { resolvedArtifact ->
             copyFile(resolvedArtifact.file, project, libsPath,dontCopy)
         }

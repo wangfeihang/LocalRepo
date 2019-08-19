@@ -20,21 +20,20 @@ public class GenerateRepoImpl implements Plugin<Project> {
     Closure dontCopy
 
     def repoUri
-    
+
     def nodeAdder
 
 
-    def localDependency = new ArrayList()
-    def repoDependency = new ArrayList()
+    def localDependency = new ArrayList<Dependency>()
+    def repoDependency = new ArrayList<Dependency>()
     def dependedProjects = new ArrayList()
-    
-    def repoResolvedDependency=new ArrayList<ResolvedDependency>()
-    def localResolvedDependency=new ArrayList<ResolvedDependency>()
+
+    def repoResolvedDependency = new ArrayList<ResolvedDependency>()
+    def localResolvedDependency = new ArrayList<ResolvedDependency>()
 
     def innerRepoDependency = new ArrayList()
 
     def project
-
 
 
     private initUpload(final Project project) {
@@ -53,13 +52,13 @@ public class GenerateRepoImpl implements Plugin<Project> {
                         //分解
                         analyzeInnerDependencies(project)
                         Node dependenciesNode = asNode().getAt("dependencies")[0]
-                        if(dependenciesNode!=null){
+                        if (dependenciesNode != null) {
                             asNode().remove(dependenciesNode)
                         }
                         dependenciesNode = asNode().appendNode('dependencies')
 
-                        innerRepoDependency.each {node->
-                            nodeAdder.addDependencyNode(node,dependenciesNode)
+                        innerRepoDependency.each { node ->
+                            nodeAdder.addDependencyNode(node, dependenciesNode)
 
                         }
                         repoDependency.each { dependency ->
@@ -71,7 +70,7 @@ public class GenerateRepoImpl implements Plugin<Project> {
                             nodeAdder.addDependencyNode(dependedProject, dependenciesNode)
                         }
 
-                        repoResolvedDependency.each {dependency ->
+                        repoResolvedDependency.each { dependency ->
 //                            println("wang,repoResolvedDependency:${dependency}")
                             nodeAdder.addDependencyNode(dependency, dependenciesNode)
                         }
@@ -81,14 +80,17 @@ public class GenerateRepoImpl implements Plugin<Project> {
             project.uploadArchives.doLast {
                 localDependency.each {
 //                    println("wang,localDependency:${it}")
-                    it.excludeRules.each{ rule->
+                    it.excludeRules.each { rule ->
                         println("exclude group: '${rule.group}', module: '${rule.module}'")
                     }
-                    CopyDependency.copyDependencies(it, project, repo, dontCopy)
+                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}libs", dontCopy)
                 }
                 localResolvedDependency.each {
 //                    println("wang,localResolvedDependency:${it}")
-                    CopyDependency.copyDependencies(it,project,repo, dontCopy)
+                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}libs", dontCopy)
+                }
+                repoDependency.each {
+                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}unLocalLibs", dontCopy)
                 }
             }
         }
@@ -97,35 +99,33 @@ public class GenerateRepoImpl implements Plugin<Project> {
         }
     }
 
-   
-
 
     private void analyzeAllDependencies(Project project) {
         project.configurations.each {
-            if(it.name.equals("api")){
+            if (it.name.equals("api")) {
                 analyzeSingleConfigurationsDependencies(project.configurations.api.getAllDependencies())
-            }else if(it.name.equals("compile")){
+            } else if (it.name.equals("compile")) {
                 analyzeSingleConfigurationsDependencies(project.configurations.compile.getAllDependencies())
-            }else if(it.name.equals("implementation")){
+            } else if (it.name.equals("implementation")) {
                 analyzeSingleConfigurationsDependencies(project.configurations.implementation.getAllDependencies())
             }
         }
 
     }
 
-    private void analyzeInnerDependencies(Project project){
+    private void analyzeInnerDependencies(Project project) {
         project.configurations.each {
-            if(it.name.equals("api")){
-                project.configurations.api.getAllDependencies().each{ dependency->
-                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency,project,isLocal,repo,dontCopy))
+            if (it.name.equals("api")) {
+                project.configurations.api.getAllDependencies().each { dependency ->
+                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency, project, isLocal, repo, dontCopy))
                 }
-            } else if(it.name.equals("compile")){
-                project.configurations.compile.getAllDependencies().each{ dependency->
-                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency,project,isLocal,repo,dontCopy))
+            } else if (it.name.equals("compile")) {
+                project.configurations.compile.getAllDependencies().each { dependency ->
+                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency, project, isLocal, repo, dontCopy))
                 }
-            }else if(it.name.equals("implementation")){
+            } else if (it.name.equals("implementation")) {
                 project.configurations.implementation.getAllDependencies().each { dependency ->
-                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency, project, isLocal, repo,dontCopy))
+                    innerRepoDependency.addAll(CopyDependency.getInnerDependencies(dependency, project, isLocal, repo, dontCopy))
                 }
             }
 
@@ -150,7 +150,7 @@ public class GenerateRepoImpl implements Plugin<Project> {
 
     @Override
     void apply(Project project) {
-        this.project=project
+        this.project = project
         project.extensions.create('uploadConfigLocal', UploadExtension, project)
         project.afterEvaluate {
             initUploadExtensions(project)
@@ -190,7 +190,7 @@ public class GenerateRepoImpl implements Plugin<Project> {
             }
         }
 
-        dontCopy=uploadExtensions.dontCopy
+        dontCopy = uploadExtensions.dontCopy
         if (dontCopy == null) {
             dontCopy = {
                 artifact ->
@@ -199,7 +199,6 @@ public class GenerateRepoImpl implements Plugin<Project> {
         }
 
         repoUri = project.uri(repo)
-        nodeAdder=new NodeAdder(groupId,sdkVersion)
-        
+        nodeAdder = new NodeAdder(groupId, sdkVersion)
     }
 }
