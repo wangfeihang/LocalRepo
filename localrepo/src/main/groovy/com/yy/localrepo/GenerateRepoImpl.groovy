@@ -83,14 +83,14 @@ public class GenerateRepoImpl implements Plugin<Project> {
                     it.excludeRules.each { rule ->
                         println("exclude group: '${rule.group}', module: '${rule.module}'")
                     }
-                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}libs", dontCopy)
+                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}${Constants.LIB}", dontCopy)
                 }
                 localResolvedDependency.each {
 //                    println("wang,localResolvedDependency:${it}")
-                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}libs", dontCopy)
+                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}${Constants.LIB}", dontCopy)
                 }
                 repoDependency.each {
-                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}unLocalLibs", dontCopy)
+                    CopyDependency.copyDependencies(it, project, "$repo${File.separator}${Constants.UN_LOCAL_LIB}", dontCopy)
                 }
             }
         }

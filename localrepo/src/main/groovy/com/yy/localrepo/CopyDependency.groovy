@@ -9,27 +9,27 @@ import javax.print.DocFlavor.STRING
 /**
  * Created by wangfeihang on 2018/10/19.
  */
-public class CopyDependency {
+class CopyDependency {
 
-    def static copyDependencies(Dependency dependency, Project project, String libsPath,Closure dontCopy) {
+    static copyDependencies(Dependency dependency, Project project, String libsPath, Closure dontCopy) {
         println("CopyDependency,need copy${dependency}")
         def dependencyPath = project.gradle.getGradleUserHomeDir().path + "/caches/modules-2/files-2.1/"
         dependencyPath += dependency.group + "/" + dependency.name + "/" + dependency.version + "/"
         println("the dependency path is:${dependencyPath}")
         project.fileTree(dependencyPath).getFiles().each { file ->
-            copyFile(file, project, libsPath,dontCopy)
+            copyFile(file, project, libsPath, dontCopy)
         }
     }
 
-    def static copyDependencies(ResolvedDependency dependency, Project project, String libsPath,Closure dontCopy) {
+    static copyDependencies(ResolvedDependency dependency, Project project, String libsPath, Closure dontCopy) {
         println("CopyDependency,need copy:${dependency}")
         dependency.getModuleArtifacts().each { resolvedArtifact ->
-            copyFile(resolvedArtifact.file, project, libsPath,dontCopy)
+            copyFile(resolvedArtifact.file, project, libsPath, dontCopy)
         }
     }
 
-    private static void copyFile(File file, Project project, String libsPath,Closure dontCopy) {
-        if (file.name.contains("sources")||dontCopy.call(file.name)) {
+    private static void copyFile(File file, Project project, String libsPath, Closure dontCopy) {
+        if (file.name.contains("sources") || dontCopy.call(file.name)) {
             println("dontCopy worked")
             return
         }
@@ -56,23 +56,30 @@ public class CopyDependency {
         }
     }
 
-
-    def static ArrayList<NodeAdder.PomNode> getInnerDependencies(Dependency dependency, Project project, Closure isLocal, String repo,Closure dontCopy){
-        def repoNodeResults=new ArrayList()
+    static ArrayList<NodeAdder.PomNode> getInnerDependencies(Dependency dependency, Project project, Closure isLocal, String repo, Closure dontCopy) {
+        def repoNodeResults = new ArrayList()
         def dependencyPath = project.gradle.getGradleUserHomeDir().path + "/caches/modules-2/files-2.1/"
         dependencyPath += dependency.group + "/" + dependency.name + "/" + dependency.version + "/"
 
-        def libsPath = "$repo${File.separator}libs"
+        def libsPath = "$repo${File.separator}${Constants.LIB}"
+        def unlocalLibsPath = "$repo${File.separator}${Constants.UN_LOCAL_LIB}"
         project.fileTree(dependencyPath).getFiles().each { file ->
-            if(file.name.endsWith(".pom")){
-                processPomFile(file.path,project,repoNodeResults,isLocal,libsPath,dontCopy)
+            if (file.name.endsWith(".pom")) {
+                processPomFile(file.path, project, repoNodeResults, isLocal,
+                        libsPath, unlocalLibsPath, dontCopy)
             }
         }
         return repoNodeResults
     }
 
-
-    def private static processPomFile(String pomPath, Project project, ArrayList<NodeAdder.PomNode> repoNodes, Closure isLocal, String libsPath,Closure dontCopy) {
+    private static processPomFile(
+            String pomPath, Project project,
+            ArrayList<NodeAdder.PomNode> repoNodes,
+            Closure isLocal,
+            String libsPath,
+            String unLocalLibsPath,
+            Closure dontCopy
+    ) {
         def pom = new XmlSlurper().parse(new File(pomPath))
         pom.dependencies.children().each {
             def subJarLocation = project.gradle.getGradleUserHomeDir().path + "/caches/modules-2/files-2.1/"
@@ -87,18 +94,25 @@ public class CopyDependency {
                 }
 
                 subJarLocation += it.groupId.text() + "/" + it.artifactId.text() + "/" + version + "/"
-                def islocal=isLocal.call("${it.groupId.text()}:${it.artifactId.text()}:${version}")
-                if(!islocal && version!=null&&!version.isEmpty()&&!it.artifactId.text().contains("animal-sniffer-annotations")&&!it.artifactId.text().contains("kotlin")&&!it.artifactId.text().contains("jetbrains")&&!it.groupId.text().contains("kotlin")&&!it.groupId.text().contains("jetbrains")){
-                    repoNodes.add(new NodeAdder.PomNode(it.groupId.text(),it.artifactId.text(),version))
-//                    repoNodes.add(it)
-                }else if(islocal){
+                def islocal = isLocal.call("${it.groupId.text()}:${it.artifactId.text()}:${version}")
+                if (!islocal && version != null && !version.isEmpty() && !it.artifactId.text().contains("animal-sniffer-annotations") && !it.artifactId.text().contains("kotlin") && !it.artifactId.text().contains("jetbrains") && !it.groupId.text().contains("kotlin") && !it.groupId.text().contains("jetbrains")) {
+                    repoNodes.add(new NodeAdder.PomNode(it.groupId.text(), it.artifactId.text(), version))
+                } else if (!isLocal) {
                     project.fileTree(subJarLocation).getFiles().each { file ->
                         if (file.name.endsWith(".pom")) {
-                            processPomFile(file.path,project,repoNodes,isLocal,libsPath,dontCopy)
-                        } else if(islocal){
-                            if (!file.name.contains("sources")) {
-                                copyFile(file, project, libsPath,dontCopy)
-                            }
+                            processPomFile(file.path, project, repoNodes, { false },
+                                    libsPath, unLocalLibsPath, dontCopy)
+                        } else {
+                            copyFile(file, project, unLocalLibsPath, dontCopy)
+                        }
+                    }
+                } else if (islocal) {
+                    project.fileTree(subJarLocation).getFiles().each { file ->
+                        if (file.name.endsWith(".pom")) {
+                            processPomFile(file.path, project, repoNodes, isLocal,
+                                    libsPath, unLocalLibsPath, dontCopy)
+                        } else {
+                            copyFile(file, project, libsPath, dontCopy)
                         }
                     }
                 }
