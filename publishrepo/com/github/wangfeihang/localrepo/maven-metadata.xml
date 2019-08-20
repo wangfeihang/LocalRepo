@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.github.wangfeihang</groupId>
+  <artifactId>localrepo</artifactId>
+  <versioning>
+    <versions>
+      <version>1.0.2-COPY-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20190819092117</lastUpdated>
+  </versioning>
+</metadata>

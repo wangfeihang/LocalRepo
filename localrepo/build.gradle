@@ -8,15 +8,15 @@ dependencies {
     compile localGroovy()
 }
 
-version='1.0.1'
+version='1.0.2-COPY-SNAPSHOT'
 
-//
+
 //group='com.yy.localrepo'
-//
-//uploadArchives {
-//    repositories {
-//        mavenDeployer {
-//            repository(url: uri('../pluginrepo'))
-//        }
-//    }
-//}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: uri('../publishrepo'))
+        }
+    }
+}
