@@ -4,7 +4,7 @@ plugins {
     groovy
     `kotlin-dsl`
     kotlin("jvm") version "1.2.20"
-    "com.github.dcendents.android-maven"
+    maven
 }
 
 dependencies {
@@ -24,4 +24,3 @@ fun DependencyHandlerScope.impl(vararg dependency: Any) {
 }
 
 group = "com.github.wangfeihang"
-version = "1.0.1"
