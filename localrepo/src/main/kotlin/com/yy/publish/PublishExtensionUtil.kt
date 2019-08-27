@@ -25,7 +25,7 @@ object PublishExtensionUtil {
                         username = publishExtension.repoUserName
                         password = publishExtension.repoPassword
                     }
-                    if (publishExtension.sdkVersion.contains("SNAPSHOT")) {
+                    if (project.version.toString().contains("SNAPSHOT")) {
                         setUrl("${publishExtension.snapshotRepo}")
                     } else {
                         setUrl("${publishExtension.releaseRepo}")

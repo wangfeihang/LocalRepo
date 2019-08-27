@@ -70,7 +70,7 @@ class PomAnalyzer(
             }
 
         })
-        val sdkVersion = if (local && !this.version.endsWith("-SNAPSHOT")) this.version + "-SNAPSHOT" else this.version
+        val sdkVersion = if (local) DependenciesVersionUtil.getVersion(this.version) else this.version
         return UnionSdkInfo(
             groupId = this.groupId,
             artifactId = this.artifactId,

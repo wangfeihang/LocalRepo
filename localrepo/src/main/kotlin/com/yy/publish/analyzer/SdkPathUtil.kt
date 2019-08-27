@@ -50,11 +50,13 @@ object SdkPathUtil {
     }
 
     fun getSdkPomPath(project: Project, parentPath: String): String? {
+        val fileCreateTime: Long = 0
+        var file: File? = null
         project.fileTree(parentPath).forEach {
-            if (it.name.endsWith(".pom")) {
-                return it.absolutePath
+            if (it.name.endsWith(".pom") && it.lastModified() > fileCreateTime) {
+                file = it
             }
         }
-        return null
+        return file?.absolutePath
     }
 }

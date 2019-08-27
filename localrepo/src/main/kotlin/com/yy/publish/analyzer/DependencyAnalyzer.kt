@@ -77,8 +77,8 @@ class DependencyAnalyzer(
 
         val exclusions = dependency.getExclusions()
         val sdkVersion =
-            if (isLocal.call(dependency) && dependency.version?.endsWith("-SNAPSHOT") == false) {
-                dependency.version + "-SNAPSHOT"
+            if (isLocal.call(dependency)) {
+                DependenciesVersionUtil.getVersion(dependency.version ?: "")
             } else {
                 dependency.version
             }
